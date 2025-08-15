@@ -1,6 +1,6 @@
 # Project 3:  circom实现poseidon2哈希算法
 
-本项目通过circom实现poseidon2哈希算法的电路，其中参数参照文档https://eprint.iacr.org/2023/323.pdf的table1，(n,t,d)=(256,3,5),RF=8, RP=56。
+本项目通过circom实现poseidon2哈希算法的电路，其中参数参照文档https://eprint.iacr.org/2023/323.pdf的table1，(n,t,d)=(256,3,5),RF=8, RP=56，并用Groth16算法生成证明。
 ##  poseidon2哈希算法
 本章节负责介绍poseidon2哈希算法的运行原理。由于哈希算法输入只需要考虑一个block，因此这里也按照一个block进行介绍。
 
@@ -68,23 +68,6 @@ poseidon2.r1cs ../witness.wtns
 [INFO]  snarkJS: WITNESS CHECKING FINISHED SUCCESSFULLY
 ```
 
-lyz@LYZ2022:~/circuits/poseidon2_js$ snarkjs wtns check ../poseidon2.r1cs ../witness.wtns
-[INFO]  snarkJS: WITNESS CHECKING STARTED
-[INFO]  snarkJS: > Reading r1cs file
-[INFO]  snarkJS: > Reading witness file
-[INFO]  snarkJS: ----------------------------
-[INFO]  snarkJS:   WITNESS CHECK
-[INFO]  snarkJS:   Curve:          bn128
-[INFO]  snarkJS:   Vars (wires):   628
-[INFO]  snarkJS:   Outputs:        0
-[INFO]  snarkJS:   Public Inputs:  0
-[INFO]  snarkJS:   Private Inputs: 4
-[INFO]  snarkJS:   Labels:         1873
-[INFO]  snarkJS:   Constraints:    624
-[INFO]  snarkJS:   Custom Gates:   false
-[INFO]  snarkJS: ----------------------------
-[INFO]  snarkJS: > Checking witness correctness
-[INFO]  snarkJS: WITNESS IS CORRECT
 现在已经完成：
 
 - 功能完整的Poseidon2电路实现
@@ -92,3 +75,17 @@ lyz@LYZ2022:~/circuits/poseidon2_js$ snarkjs wtns check ../poseidon2.r1cs ../wit
 - 有效的见证生成能力
 
 - 可验证的约束系统
+
+
+## Groth16算法生成证明
+首先把main函数切换到验证函数上，之后找到poseidon2哈希出来的哈希值，和哈希的输入值一起作为验证函数的输入值，之后编译电路并生成 WASM 见证器，生成证明并进行本地验证，最后得到结果为OK，说明验证通过。
+```bash
+snarkjs powersoftau new bn128 12 pot12_0000.ptau -v
+snarkjs powersoftau contribute pot12_0000.ptau pot12_0001.ptau --name="First" -v
+snarkjs powersoftau prepare phase2 pot12_0001.ptau pot12_final.ptau
+snarkjs groth16 setup poseidon2.r1cs pot12_final.ptau poseidon2_0000.zkey
+snarkjs zkey contribute poseidon2_0000.zkey poseidon2_final.zkey --name="key1" -v
+snarkjs zkey export verificationkey poseidon2_final.zkey verification_key.json
+snarkjs groth16 prove poseidon2_final.zkey witness.wtns proof.json public.json
+snarkjs groth16 verify verification_key.json public.json proof.json
+```
